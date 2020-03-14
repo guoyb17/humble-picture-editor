@@ -126,6 +126,33 @@ def sphere(bitmap, width, height, background, x_limit, y_limit):
                     background[iter_x][iter_y] = [128, 128, 128] # gray padding
     return background
 
+def cylinder(bitmap, width, height, is_r):
+    '''
+    Input: source bitmap and its size,
+           whether row direction (x direction) is the shaft.
+
+    Return: finished picture.
+    '''
+    if is_r:
+        radius = int(round(height / math.pi))
+        ans = np.zeros((radius * 2, width, bitmap.shape[2]))
+        for iter_x in range(height):
+            for iter_y in range(width):
+                phi = (iter_x - height / 2) / radius
+                tar_x = int(round(radius + radius * math.sin(phi)))
+                if 0 <= tar_x and tar_x < radius * 2:
+                    ans[tar_x][iter_y] = bitmap[iter_x][iter_y]
+    else:
+        radius = int(round(width / math.pi))
+        ans = np.zeros((height, radius * 2, bitmap.shape[2]))
+        for iter_x in range(height):
+            for iter_y in range(width):
+                phi = (iter_y - width / 2) / radius
+                tar_y = int(round(radius + radius * math.sin(phi)))
+                if 0 <= tar_y and tar_y < radius * 2:
+                    ans[iter_x][tar_y] = bitmap[iter_x][iter_y]
+    return ans
+
 def main(ipt_img, opt_img, mode, background):
     src = image.open(ipt_img).convert("RGB")
     width, height = src.size
@@ -147,10 +174,21 @@ def main(ipt_img, opt_img, mode, background):
             x_limit, y_limit = bg_pic.size
             bg_bitmap = np.array(bg_pic)
         ans = sphere(bitmap, width, height, bg_bitmap, x_limit, y_limit)
-    elif mode == "new": # TODO: change new
-        pass
+    elif mode == "cylinder":
+        print("[NOTE] Which direction do you want to use as the shaft of the cylinder?")
+        legal_selection = False
+        while not legal_selection:
+            _selection = input(">> Input shaft direction (r / c): ")
+            if _selection == "r":
+                legal_selection = True
+                ans = cylinder(bitmap, width, height, True)
+            elif _selection == "c":
+                legal_selection = True
+                ans = cylinder(bitmap, width, height, False)
+            else:
+                print("[ERROR] You must input \"r\" or \"c\"!")
     else:
-        print("[ERROR] Illegal mode! Only accept: subimg, sphere, new") # TODO: change new
+        print("[ERROR] Illegal mode! Only accept: subimg, sphere, cylinder")
         return
     dst = image.fromarray(np.uint8(ans))
     dst.save(opt_img)
@@ -170,12 +208,12 @@ if __name__ == "__main__":
                         required=True
                         )
     parser.add_argument("-m", "--mode", type=str,
-                        help="mode: subimg, sphere, new",
+                        help="mode: subimg, sphere, cylinder",
                         required=True
                         )
     parser.add_argument("-b", "--background", type=str,
                         default=None, 
-                        help="background picture, None for black background; essential for subimg!",
+                        help="background picture, None for black background; ignored by cylinder; essential for subimg!",
                         required=False
                         )
 
