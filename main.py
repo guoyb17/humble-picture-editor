@@ -73,26 +73,86 @@ def projective(bitmap, width, height, background, x_limit, y_limit):
                 background[t_x][t_y] = bitmap[iter_x][iter_y]
     return background
 
+def sphere(bitmap, width, height, background, x_limit, y_limit):
+    '''
+    Input: source bitmap and its size,
+           background for target (directly cover) and its size for range limit.
+           Especially, if background == None, x_limit and y_limit == any,
+           then use black background.
+
+    Runtime: input radius of target sphere (0 for min(width, height) / 2),
+             (if use picture background) sphere center's coordinate
+
+    Return: filled background (finished picture).
+    '''
+    legal_r = False
+    while not legal_r:
+        radius = int(input(">> Input sphere radius (pixel; 0 for min(width, height) / 2; must <= min(width, height) / 2): "))
+        if radius > int(round(min(width, height) / 2)):
+            print("[ERROR] radius must <= min(width, height) / 2!")
+        else:
+            legal_r = True
+        if radius == 0:
+            radius = int(round(min(width, height) / 2))
+    x_c = radius
+    y_c = radius
+    if background == None:
+        x_limit = 2 * radius
+        y_limit = 2 * radius
+        background = np.zeros((x_limit, y_limit, bitmap.shape[2]))
+    else:
+        print("[NOTE] You need to input the sphere center's coordinate.")
+        x_c = int(input(">> Input center point x: "))
+        y_c = int(input(">> Input center point y: "))
+    for iter_x in range(max(x_c - radius, 0), min(x_c + radius, x_limit)):
+        for iter_y in range(max(y_c - radius, 0), min(y_c + radius, y_limit)):
+            dx = iter_x - x_c
+            dy = iter_y - y_c
+            rho = int(round(math.sqrt(dx ** 2 + dy ** 2)))
+            if rho <= radius:
+                phi = math.asin(rho / radius)
+                rho_0 = radius * phi
+                if rho == 0:
+                    src_dx = 0
+                    src_dy = 0
+                else:
+                    src_dx = dx * rho_0 / rho
+                    src_dy = dy * rho_0 / rho
+                src_x = int(round(height / 2 + src_dx))
+                src_y = int(round(width / 2 + src_dy))
+                if 0 <= src_x and src_x < height and 0 <= src_y and src_y < width:
+                    background[iter_x][iter_y] = bitmap[src_x][src_y]
+                else:
+                    background[iter_x][iter_y] = [128, 128, 128] # gray padding
+    return background
+
 def main(ipt_img, opt_img, mode, background):
-    src = image.open(ipt_img)
+    src = image.open(ipt_img).convert("RGB")
     width, height = src.size
     bitmap = np.array(src)
     if mode == "subimg":
         if background == None:
             print("[ERROR] background is necessary for subimg mode!")
             return
-        bg_pic = image.open(background)
+        bg_pic = image.open(background).convert("RGB")
         x_limit, y_limit = bg_pic.size
         bg_bitmap = np.array(bg_pic)
         ans = projective(bitmap, width, height, bg_bitmap, x_limit, y_limit)
     elif mode == "sphere":
-        pass
+        bg_bitmap = None
+        x_limit = 0
+        y_limit = 0
+        if background != None:
+            bg_pic = image.open(background).convert("RGB")
+            x_limit, y_limit = bg_pic.size
+            bg_bitmap = np.array(bg_pic)
+        ans = sphere(bitmap, width, height, bg_bitmap, x_limit, y_limit)
     elif mode == "new": # TODO: change new
         pass
     else:
         print("[ERROR] Illegal mode! Only accept: subimg, sphere, new") # TODO: change new
         return
-    dst = image.fromarray(ans)
+    dst = image.fromarray(np.uint8(ans))
     dst.save(opt_img)
 
 if __name__ == "__main__":
