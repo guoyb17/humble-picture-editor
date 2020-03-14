@@ -1,0 +1,4 @@
+.vscode/
+report.*
+*.pdf
+env/
